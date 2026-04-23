@@ -1,0 +1,165 @@
+from fastapi import FastAPI, Body, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from services.db import SessionLocal, Appointment
+
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.post("/book")
+def book(data: dict = Body(...)):
+    db = SessionLocal()
+
+    appt = Appointment(
+        name=data["name"],
+        doctor=data["doctor"],
+        date=data["date"],
+        time=data["time"],
+        priority=0
+    )
+
+    db.add(appt)
+    db.commit()
+    db.close()
+
+    return {"status": "ok"}
+DATABASE_URL = "sqlite:///appointments.db"
+MAX_PATIENTS_PER_SLOT = 2
+fastapi
+uvicorn
+jinja2
+sqlalchemy
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hospital Booking</title>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 320px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            background: black;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+    <h2>Book Appointment</h2>
+
+    <input id="name" placeholder="Your Name">
+
+    <select id="doctor">
+        <option>Dr. Sharma</option>
+        <option>Dr. Khan</option>
+    </select>
+
+    <input type="date" id="date">
+    <input type="time" id="time">
+
+    <button onclick="book()">Book</button>
+
+    <p id="msg"></p>
+</div>
+
+<script>
+function book() {
+    fetch("/book", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            name: name.value,
+            doctor: doctor.value,
+            date: date.value,
+            time: time.value
+        })
+    })
+    .then(res => res.json())
+    .then(() => msg.innerText = "Appointment booked ✔")
+    .catch(() => msg.innerText = "Error ❌")
+}
+</script>
+
+</body>
+</html>
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import declarative_base, sessionmaker
+from config import DATABASE_URL
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine)
+
+Base = declarative_base()
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    doctor = Column(String)
+    date = Column(String)
+    time = Column(String)
+    priority = Column(Integer)
+
+Base.metadata.create_all(bind=engine
+from config import MAX_PATIENTS_PER_SLOT
+from services.db import Appointment
+
+DOCTOR_SCHEDULE = {
+    "Dr. Sharma": {
+        "days": ["monday", "wednesday", "friday"],
+        "slots": ["10:00", "10:30", "11:00"]
+    },
+    "Dr. Khan": {
+        "days": ["tuesday", "thursday"],
+        "slots": ["15:00", "15:30", "16:00"]
+    }
+}
+
+def get_available_slots(db, doctor, date):
+    slots = DOCTOR_SCHEDULE[doctor]["slots"]
+    available = []
+
+    for slot in slots:
+        count = db.query(Appointment).filter_by(
+            doctor=doctor,
+            date=date,
+            time=slot
+        ).count()
+
+        if count < MAX_PATIENTS_PER_SLOT:
+            available.append(slot)
+
+    return available
